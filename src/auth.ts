@@ -1,5 +1,6 @@
 import NextAuth, { type NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import connectDb from "./lib/db";
@@ -20,19 +21,16 @@ const authConfig: NextAuthConfig = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        // 1. Validate input shape before touching the DB
         const parsed = credentialsSchema.safeParse(credentials);
         if (!parsed.success) return null;
 
         const { email, password } = parsed.data;
 
         try {
-          await connectDb(); // ✅ was missing await
+          await connectDb();
 
-          // ✅ was missing await — caused user to always be a Promise (truthy!)
           const user = await User.findOne({ email }).select("+password").lean();
-
-          if (!user) return null; // ✅ return null instead of throwing (NextAuth best practice)
+          if (!user) return null;
 
           const isMatch = await bcrypt.compare(
             password,
@@ -48,15 +46,48 @@ const authConfig: NextAuthConfig = {
           };
         } catch (error) {
           console.error("[Auth] authorize error:", error);
-          return null; // ✅ never leak internal errors to the client
+          return null;
         }
       },
+    }),
+
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
 
   callbacks: {
+    async signIn({ user, account }) {
+      // Only run this logic for Google sign-ins
+      if (account?.provider === "google") {
+        try {
+          await connectDb();
+
+          const existingUser = await User.findOne({ email: user.email }).lean();
+
+          if (!existingUser) {
+            const newUser = await User.create({
+              name: user.name,
+              email: user.email,
+              image: user.image,
+            });
+            user.id = (newUser._id as string).toString();
+            user.role = newUser.role;
+          } else {
+            // Populate id and role from existing user too
+            user.id = (existingUser._id as string).toString();
+            user.role = existingUser.role as string;
+          }
+        } catch (error) {
+          console.error("[Auth] Google signIn error:", error);
+          return false; 
+        }
+      }
+      return true;
+    },
+
     jwt({ token, user }) {
-      // Only runs on sign-in; merge user fields into token once
       if (user) {
         token.id = user.id;
         token.name = user.name;
