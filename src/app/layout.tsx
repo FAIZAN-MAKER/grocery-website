@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Poppins, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Provider from "../provider";
+import StoreProvider from "@/redux/StoreProvider";
+
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
+  variable: "--font-poppins",
+});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,9 +32,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="w-full min-h-screen bg-gradient-to-b from-green-100 to-white">
+      <body
+        className={`${poppins.variable} ${geistSans.variable} ${geistMono.variable} antialiased font-sans w-full min-h-screen bg-gradient-to-b from-green-100 to-white`}
+      >
         <Provider>
-          {children}
+          <StoreProvider>
+              {children}
+          </StoreProvider>
         </Provider>
       </body>
     </html>

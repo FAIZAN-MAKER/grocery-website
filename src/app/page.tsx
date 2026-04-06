@@ -6,6 +6,9 @@ import { redirect } from "next/navigation";
 import Image from "next/image";
 import EditRoleMobile from "@/Components/EditRoleMobile";
 import Nav from "@/Components/Nav";
+import AdminDashBoard from "@/Components/AdminDashBoard";
+import UserDashboard from "@/Components/UserDashboard";
+import DeliveryBoy from "@/Components/DeliveryBoy";
 
 export default async function Home() {
   await connectDb();
@@ -22,6 +25,8 @@ export default async function Home() {
   return (
     <div>
       <Nav user={plainUser} />
+      {plainUser.role === "admin" ? ( <AdminDashBoard /> ) : plainUser.role === "user" ? (<UserDashboard />) : (<DeliveryBoy />) }
     </div>
   );
 }
+

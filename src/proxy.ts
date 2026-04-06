@@ -4,14 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  const publicRoutes = [
-    "/favicon.ico",
-    "/register",
-    "/login",
-    "/api/auth",
-    "/_next",
-  ];
-
+  const publicRoutes = ["/login", "/register", "/api/auth"];
   const isPublicRoute = publicRoutes.some((route) =>
     pathname.startsWith(route),
   );
@@ -28,9 +21,26 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  const role = token.role;
+
+  if (pathname.startsWith("/admin") && role !== "admin") {
+    return NextResponse.redirect(new URL("/unauthorized", req.url));
+  }
+
+  if (pathname.startsWith("/delivery") && role !== "deliveryBoy") {
+    return NextResponse.redirect(new URL("/unauthorized", req.url));
+  }
+
+  if (
+    pathname.startsWith("/user") &&
+    !["user", "admin"].includes(role as string)
+  ) {
+    return NextResponse.redirect(new URL("/unauthorized", req.url));
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/admin/:path*", "/user/:path*", "/delivery/:path*"],
 };
