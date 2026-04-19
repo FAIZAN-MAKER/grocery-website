@@ -323,7 +323,7 @@ const Nav = ({ user }: { user: IUser }) => {
                       </div>
                       <div className="p-2 space-y-0.5">
                         {!isAdmin && (
-                          <MenuItem href="/orders" onClick={() => setDropdownOpen(false)} className="text-gray-700 hover:bg-gray-50 hover:text-gray-900" icon={<Package className="w-4 h-4" />}>
+                          <MenuItem href="/user/my-orders" onClick={() => setDropdownOpen(false)} className="text-gray-700 hover:bg-gray-50 hover:text-gray-900" icon={<Package className="w-4 h-4" />}>
                             My Orders
                           </MenuItem>
                         )}
