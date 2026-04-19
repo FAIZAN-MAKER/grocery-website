@@ -4,9 +4,13 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, MapPin, Package, ShoppingBag, CreditCard, Banknote, Clock, Truck, CheckCircle2 } from "lucide-react";
+import {
+  ArrowLeft, MapPin, Package, ShoppingBag, CreditCard,
+  Banknote, Clock, Truck, CheckCircle2, ChevronDown, ChevronUp,
+} from "lucide-react";
 import axios from "axios";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
 interface OrderItem {
   _id: string;
   name: string;
@@ -27,7 +31,7 @@ interface OrderAddress {
 
 interface Order {
   _id: string;
-  orderId: string;
+  orderId?: string;
   items: OrderItem[];
   totalAmount: string;
   paymentMethod: "cod" | "online";
@@ -38,255 +42,245 @@ interface Order {
   updatedAt: string;
 }
 
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const formatDate = (dateString: string) =>
+  new Date(dateString).toLocaleDateString("en-IN", {
+    day: "numeric", month: "short", year: "numeric",
   });
-}
 
 const statusConfig = {
   pending: {
     label: "Pending",
-    color: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    bg: "bg-amber-100",
+    text: "text-amber-700",
+    dot: "bg-amber-500",
     icon: Clock,
   },
   "out for delivery": {
     label: "Out for Delivery",
-    color: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+    bg: "bg-blue-100",
+    text: "text-blue-700",
+    dot: "bg-blue-500",
     icon: Truck,
   },
   delivered: {
     label: "Delivered",
-    color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    bg: "bg-green-100",
+    text: "text-green-700",
+    dot: "bg-green-500",
     icon: CheckCircle2,
   },
 };
 
-const GOLD = "#c8a96e";
-
-// ─── Product Image Grid ───────────────────────────────────────────────────────
-const ProductGrid = ({ items }: { items: OrderItem[] }) => {
-  const visible = items.slice(0, 2);
-  const extra = items.length - 2;
-
+// ─── Status Badge ─────────────────────────────────────────────────────────────
+const StatusBadge = ({ status }: { status: Order["status"] }) => {
+  const cfg = statusConfig[status];
+  const Icon = cfg.icon;
   return (
-    <div className="grid gap-0.5" style={{ gridTemplateColumns: `1fr 1fr${extra > 0 ? " 1fr" : ""}` }}>
-      {visible.map((item, i) => (
-        <div
-          key={item._id || i}
-          className="relative bg-[#161616] overflow-hidden"
-          style={{ aspectRatio: "1" }}
-        >
-          <Image
-            src={item.image}
-            alt={item.name}
-            fill
-            className="object-contain p-4"
-          />
-          <div
-            className="absolute bottom-0 left-0 right-0 px-3 py-2"
-            style={{ background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}
-          >
-            <p className="text-xs font-medium text-white/90 truncate">{item.name}</p>
-            <p className="text-[10px] text-white/40 mt-0.5">×{item.quantity} {item.unit}</p>
-          </div>
-        </div>
-      ))}
-
-      {extra > 0 && (
-        <div
-          className="flex flex-col items-center justify-center bg-[#1a1a1a]"
-          style={{ aspectRatio: "1" }}
-        >
-          <span
-            className="font-serif text-3xl font-bold leading-none"
-            style={{ fontFamily: "'Playfair Display', serif", color: GOLD }}
-          >
-            +{extra}
-          </span>
-          <span className="text-[10px] tracking-widest uppercase text-white/30 mt-1">more</span>
-        </div>
-      )}
-    </div>
+    <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full ${cfg.bg} ${cfg.text}`}>
+      <Icon className="w-3.5 h-3.5" />
+      {cfg.label}
+    </span>
   );
 };
 
-// ─── Pill Badge ───────────────────────────────────────────────────────────────
-const Pill = ({ children, className }: { children: React.ReactNode; className: string }) => (
-  <span
-    className={`inline-flex items-center gap-1.5 text-[10px] font-medium tracking-widest uppercase px-2.5 py-1.5 rounded-sm border ${className}`}
-  >
-    <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80 flex-shrink-0" />
-    {children}
-  </span>
-);
-
-// ─── Item Row ─────────────────────────────────────────────────────────────────
-const ItemRow = ({ item }: { item: OrderItem }) => (
-  <div className="flex items-center gap-3 px-3 py-2.5 bg-white/[0.03] rounded-sm">
-    <div className="relative w-11 h-11 bg-[#1a1a1a] rounded-sm overflow-hidden flex-shrink-0">
-      <Image src={item.image} alt={item.name} fill className="object-contain p-1.5" />
-    </div>
-    <div className="flex-1 min-w-0">
-      <p className="text-sm font-medium text-white/80 truncate">{item.name}</p>
-      <p className="text-xs text-white/30 mt-0.5">Rs. {item.price} / {item.unit} · ×{item.quantity}</p>
-    </div>
-    <p className="text-sm font-medium flex-shrink-0" style={{ color: GOLD }}>
-      Rs. {(parseFloat(item.price) * item.quantity).toFixed(0)}
-    </p>
-  </div>
-);
-
 // ─── Order Card ───────────────────────────────────────────────────────────────
 const OrderCard = ({ order, index }: { order: Order; index: number }) => {
-  const StatusIcon = statusConfig[order.status].icon;
-  const isActive = order.status === "out for delivery";
+  const [expanded, setExpanded] = useState(false);
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.07, ease: [0.22, 1, 0.36, 1] }}
-      className="bg-[#111111] border border-white/[0.06] rounded-sm overflow-hidden hover:border-white/[0.1] transition-colors duration-300"
+      transition={{ duration: 0.45, delay: index * 0.07, ease: [0.22, 1, 0.36, 1] }}
+      className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md hover:border-green-100 transition-all duration-300"
     >
-      {/* Image grid — always visible */}
-      <ProductGrid items={order.items} />
-
-      {/* Card body */}
-      <div className="p-5 space-y-4">
-
-        {/* Header row */}
-        <div className="flex items-start justify-between gap-3">
+      {/* Card header */}
+      <div className="p-5 sm:p-6">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          {/* Order meta */}
           <div>
-            <p className="text-[10px] tracking-[0.2em] uppercase text-white/25 mb-1">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
               #{order.orderId || order._id.slice(-8).toUpperCase()}
             </p>
-            <p className="text-[15px] font-medium text-white/80">{formatDate(order.createdAt)}</p>
+            <p className="text-sm text-gray-500">{formatDate(order.createdAt)}</p>
           </div>
-          <div className="text-right flex-shrink-0">
-            <p className="text-[10px] tracking-[0.12em] uppercase text-white/25 mb-1">Total</p>
-            <p
-              className="text-2xl font-bold leading-none"
-              style={{ fontFamily: "'Playfair Display', serif", color: GOLD }}
-            >
-              Rs. {order.totalAmount}
-            </p>
+          {/* Total */}
+          <div className="text-right shrink-0">
+            <p className="text-xs text-gray-400 font-medium mb-0.5">Total</p>
+            <p className="text-2xl font-black text-gray-900">Rs. {order.totalAmount}</p>
           </div>
         </div>
 
-        {/* Status pills */}
-        <div className="flex flex-wrap gap-1.5">
-          <Pill className={statusConfig[order.status].color}>
-            <StatusIcon size={10} className="opacity-0 w-0" />
-            {statusConfig[order.status].label}
-          </Pill>
-          <Pill className={order.isPaid ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"}>
+        {/* Badges row */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          <StatusBadge status={order.status} />
+
+          <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full ${
+            order.isPaid ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"
+          }`}>
+            <span className={`w-2 h-2 rounded-full ${order.isPaid ? "bg-green-500" : "bg-red-500"}`} />
             {order.isPaid ? "Paid" : "Unpaid"}
-          </Pill>
-          <Pill className="bg-white/5 text-white/40 border-white/10">
-            {order.paymentMethod === "cod" ? (
-              <><Banknote size={10} className="inline" /> Cash on Delivery</>
-            ) : (
-              <><CreditCard size={10} className="inline" /> Online</>
-            )}
-          </Pill>
+          </span>
+
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-gray-100 text-gray-600">
+            {order.paymentMethod === "cod"
+              ? <><Banknote className="w-3.5 h-3.5" /> Cash on Delivery</>
+              : <><CreditCard className="w-3.5 h-3.5" /> Online</>
+            }
+          </span>
+        </div>
+
+        {/* Product thumbnails */}
+        <div className="flex items-center gap-2 mb-4">
+          {order.items.slice(0, 4).map((item, i) => (
+            <motion.div
+              key={item._id || i}
+              className="relative w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 overflow-hidden shrink-0"
+              whileHover={{ scale: 1.08, zIndex: 10 }}
+            >
+              <Image src={item.image} alt={item.name} fill className="object-contain p-1.5" />
+            </motion.div>
+          ))}
+          {order.items.length > 4 && (
+            <div className="w-12 h-12 rounded-xl bg-green-50 border border-green-100 flex items-center justify-center shrink-0">
+              <span className="text-xs font-bold text-green-600">+{order.items.length - 4}</span>
+            </div>
+          )}
+          <p className="text-sm text-gray-400 ml-1 font-medium">
+            {order.items.length} item{order.items.length !== 1 ? "s" : ""}
+          </p>
         </div>
 
         {/* Address */}
-        <div className="flex items-start gap-3 p-3.5 bg-white/[0.03] rounded-sm border border-white/[0.05]">
-          <div
-            className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-            style={{ background: "rgba(200,169,110,0.1)" }}
-          >
-            <MapPin size={12} style={{ color: GOLD }} />
+        <div className="flex items-start gap-3 bg-gray-50 rounded-2xl p-3.5 border border-gray-100">
+          <div className="w-8 h-8 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
+            <MapPin className="w-4 h-4 text-green-600" />
           </div>
-          <div>
-            <p className="text-sm font-medium text-white/70">{order.address.fullName}</p>
-            <p className="text-xs text-white/30 mt-0.5 leading-relaxed">
-              {order.address.fullAddress}<br />
-              {order.address.city}, {order.address.state} — {order.address.pinCode} · {order.address.mobile}
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-gray-800">{order.address.fullName}</p>
+            <p className="text-xs text-gray-400 mt-0.5 leading-relaxed line-clamp-2">
+              {order.address.fullAddress}, {order.address.city}, {order.address.state} — {order.address.pinCode}
             </p>
           </div>
         </div>
 
-        {/* Full item list — always shown for active orders, or all orders */}
-        {(isActive || order.items.length <= 3) && (
-          <div className="space-y-1.5 pt-1">
-            <p className="text-[10px] tracking-[0.18em] uppercase text-white/20 mb-2">
-              {order.items.length} item{order.items.length !== 1 ? "s" : ""}
-            </p>
-            {order.items.map((item, i) => (
-              <ItemRow key={item._id || i} item={item} />
-            ))}
-          </div>
-        )}
+        {/* Expand toggle */}
+        <motion.button
+          onClick={() => setExpanded((p) => !p)}
+          className="w-full flex items-center justify-center gap-2 mt-4 text-xs font-semibold text-gray-400 hover:text-green-600 transition-colors py-1"
+          whileTap={{ scale: 0.97 }}
+        >
+          {expanded ? (
+            <><ChevronUp className="w-4 h-4" /> Hide items</>
+          ) : (
+            <><ChevronDown className="w-4 h-4" /> View all items</>
+          )}
+        </motion.button>
       </div>
+
+      {/* Expandable items list */}
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 200, damping: 24 }}
+            className="overflow-hidden border-t border-gray-100"
+          >
+            <div className="px-5 sm:px-6 py-4 space-y-2 bg-gray-50/50">
+              {order.items.map((item, i) => (
+                <motion.div
+                  key={item._id || i}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  className="flex items-center gap-3 bg-white rounded-2xl p-3 border border-gray-100"
+                >
+                  <div className="relative w-11 h-11 bg-gray-50 rounded-xl overflow-hidden shrink-0">
+                    <Image src={item.image} alt={item.name} fill className="object-contain p-1.5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-800 truncate">{item.name}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Rs. {item.price} / {item.unit} · ×{item.quantity}
+                    </p>
+                  </div>
+                  <p className="text-sm font-bold text-gray-900 shrink-0">
+                    Rs. {(parseFloat(item.price) * item.quantity).toFixed(0)}
+                  </p>
+                </motion.div>
+              ))}
+              {/* Subtotal row */}
+              <div className="flex justify-between items-center pt-2 px-1">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Order Total</span>
+                <span className="text-base font-black text-green-600">Rs. {order.totalAmount}</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
 
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+const Skeleton = () => (
+  <div className="space-y-4">
+    {[1, 2, 3].map((i) => (
+      <div key={i} className="bg-white rounded-3xl border border-gray-100 p-6 animate-pulse space-y-4">
+        <div className="flex justify-between">
+          <div className="space-y-2">
+            <div className="h-3 w-20 bg-gray-100 rounded-full" />
+            <div className="h-4 w-28 bg-gray-100 rounded-full" />
+          </div>
+          <div className="h-8 w-24 bg-gray-100 rounded-xl" />
+        </div>
+        <div className="flex gap-2">
+          <div className="h-7 w-24 bg-gray-100 rounded-full" />
+          <div className="h-7 w-16 bg-gray-100 rounded-full" />
+        </div>
+        <div className="flex gap-2">
+          {[0, 1, 2, 3].map((j) => (
+            <div key={j} className="w-12 h-12 bg-gray-100 rounded-xl" />
+          ))}
+        </div>
+        <div className="h-16 bg-gray-50 rounded-2xl" />
+      </div>
+    ))}
+  </div>
+);
+
 // ─── Empty State ──────────────────────────────────────────────────────────────
 const EmptyState = () => (
   <motion.div
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    className="text-center py-24"
+    initial={{ opacity: 0, scale: 0.95 }}
+    animate={{ opacity: 1, scale: 1 }}
+    className="text-center py-20 flex flex-col items-center gap-5"
   >
-    <div
-      className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
-      style={{ background: "rgba(200,169,110,0.08)", border: "0.5px solid rgba(200,169,110,0.15)" }}
+    <motion.div
+      className="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center"
+      animate={{ y: [0, -8, 0] }}
+      transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
     >
-      <ShoppingBag size={32} style={{ color: GOLD }} />
+      <ShoppingBag className="w-12 h-12 text-green-300" />
+    </motion.div>
+    <div>
+      <h2 className="text-2xl font-bold text-gray-800">No orders yet</h2>
+      <p className="text-gray-400 text-sm mt-2 max-w-xs mx-auto">
+        Your order history will appear here once you place your first order.
+      </p>
     </div>
-    <h3
-      className="text-2xl font-bold mb-2"
-      style={{ fontFamily: "'Playfair Display', serif", color: "#f0ece4" }}
-    >
-      No orders yet.
-    </h3>
-    <p className="text-sm text-white/30 mb-8">Your order history will appear here</p>
     <Link href="/">
       <motion.button
-        whileHover={{ scale: 1.03 }}
-        whileTap={{ scale: 0.97 }}
-        className="px-6 py-3 text-sm font-medium tracking-widest uppercase rounded-sm transition-colors"
-        style={{ background: GOLD, color: "#0a0a0a" }}
+        whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+        className="bg-green-500 hover:bg-green-600 text-white font-semibold px-6 py-3 rounded-2xl shadow-lg shadow-green-200 transition-colors"
       >
         Start Shopping
       </motion.button>
     </Link>
   </motion.div>
-);
-
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
-const Skeleton = () => (
-  <div className="space-y-0.5">
-    {[1, 2, 3].map((i) => (
-      <div key={i} className="bg-[#111] border border-white/[0.05] rounded-sm overflow-hidden animate-pulse">
-        <div className="grid grid-cols-3 gap-0.5">
-          {[0, 1, 2].map((j) => (
-            <div key={j} className="aspect-square bg-white/[0.04]" />
-          ))}
-        </div>
-        <div className="p-5 space-y-3">
-          <div className="flex justify-between">
-            <div className="space-y-2">
-              <div className="h-2.5 w-20 bg-white/[0.06] rounded" />
-              <div className="h-4 w-28 bg-white/[0.06] rounded" />
-            </div>
-            <div className="h-7 w-20 bg-white/[0.06] rounded" />
-          </div>
-          <div className="flex gap-2">
-            <div className="h-6 w-24 bg-white/[0.06] rounded" />
-            <div className="h-6 w-16 bg-white/[0.06] rounded" />
-          </div>
-          <div className="h-16 bg-white/[0.04] rounded" />
-        </div>
-      </div>
-    ))}
-  </div>
 );
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -303,9 +297,8 @@ export default function MyOrdersPage() {
         if (Array.isArray(data)) setOrders(data);
         else if (data._id) setOrders([data]);
         else setOrders([]);
-      } catch (err) {
-        console.error("Error fetching orders:", err);
-        setError("Failed to load orders");
+      } catch {
+        setError("Failed to load orders. Please try again.");
         setOrders([]);
       } finally {
         setLoading(false);
@@ -315,91 +308,66 @@ export default function MyOrdersPage() {
   }, []);
 
   return (
-    <>
-      {/* Playfair Display font */}
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&display=swap');`}</style>
+    <div className="min-h-screen bg-gradient-to-b from-green-50/60 to-white pb-20 pt-8">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6">
 
-      <div className="min-h-screen bg-[#0a0a0a] pb-16 pt-6">
-        <div className="container mx-auto px-4 max-w-2xl">
-
-          {/* Top bar */}
-          <motion.div
-            initial={{ opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between mb-10"
-          >
-            <Link href="/">
-              <motion.button
-                whileHover={{ x: -2 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-2 text-white/40 hover:text-white/70 transition-colors text-xs tracking-widest uppercase font-medium"
-              >
-                <ArrowLeft size={14} />
-                Back
-              </motion.button>
-            </Link>
-
-            <div className="flex items-center gap-2.5">
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center"
-                style={{ background: "rgba(200,169,110,0.12)", border: "0.5px solid rgba(200,169,110,0.2)" }}
-              >
-                <Package size={14} style={{ color: GOLD }} />
-              </div>
-              <span className="text-[10px] tracking-[0.2em] uppercase text-white/30 font-medium">
-                Order History
-              </span>
-            </div>
-          </motion.div>
-
-          {/* Page title */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
-            className="mb-10 pb-8 border-b border-white/[0.06]"
-          >
-            <p className="text-[11px] tracking-[0.22em] uppercase mb-3" style={{ color: GOLD }}>
-              Your Orders
-            </p>
-            <h1
-              className="text-5xl font-black leading-[1.05] text-white"
-              style={{ fontFamily: "'Playfair Display', serif" }}
+        {/* Header */}
+        <motion.div
+          className="flex items-center gap-4 mb-8"
+          initial={{ opacity: 0, y: -16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 120, damping: 16 }}
+        >
+          <Link href="/">
+            <motion.button
+              whileHover={{ x: -3 }} whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-2 bg-white border border-gray-200 hover:border-green-300 px-4 py-2.5 rounded-2xl text-gray-700 font-medium text-sm transition-colors shadow-sm"
             >
-              {loading ? "Loading…" : orders.length === 0
-                ? "Nothing here."
-                : `${orders.length} deliver${orders.length === 1 ? "y" : "ies"},`}
-            </h1>
-            {!loading && orders.length > 0 && (
-              <h1
-                className="text-5xl font-black leading-[1.05]"
-                style={{ fontFamily: "'Playfair Display', serif", color: GOLD }}
-              >
-                all accounted for.
-              </h1>
-            )}
+              <ArrowLeft className="w-4 h-4 text-green-600" />
+              Back
+            </motion.button>
+          </Link>
+
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-green-100 flex items-center justify-center">
+              <Package className="w-4 h-4 text-green-600" />
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">My Orders</h1>
+              {!loading && orders.length > 0 && (
+                <p className="text-xs text-gray-400 font-medium mt-0.5">
+                  {orders.length} order{orders.length !== 1 ? "s" : ""} placed
+                </p>
+              )}
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Error */}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 text-red-600 text-sm mb-6"
+          >
+            {error}
           </motion.div>
+        )}
 
-          {/* Content */}
-          <AnimatePresence mode="wait">
-            {loading ? (
-              <Skeleton key="skeleton" />
-            ) : orders.length === 0 ? (
-              <EmptyState key="empty" />
-            ) : (
-              <div key="orders" className="space-y-0.5">
-                {orders.map((order, i) => (
-                  <OrderCard key={order._id} order={order} index={i} />
-                ))}
-              </div>
-            )}
-          </AnimatePresence>
-
-          {error && (
-            <p className="text-center text-xs text-red-400/60 mt-6">{error}</p>
+        {/* Content */}
+        <AnimatePresence mode="wait">
+          {loading ? (
+            <Skeleton key="skeleton" />
+          ) : orders.length === 0 ? (
+            <EmptyState key="empty" />
+          ) : (
+            <motion.div key="orders" className="space-y-4">
+              {orders.map((order, i) => (
+                <OrderCard key={order._id} order={order} index={i} />
+              ))}
+            </motion.div>
           )}
-        </div>
+        </AnimatePresence>
       </div>
-    </>
+    </div>
   );
 }
