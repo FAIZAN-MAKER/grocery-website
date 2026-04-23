@@ -182,7 +182,7 @@ const CategorySlider = ({ onCategorySelect }: CategorySliderProps) => {
               <div
                 key={category.id}
                 className="flex-shrink-0"
-                style={{ width: `calc(${100 / itemsPerView}% - ${((itemsPerView - 1) * (window.innerWidth < 640 ? 12 : 20)) / itemsPerView}px)` }}
+                style={{ width: `calc(${100 / itemsPerView}% - ${((itemsPerView - 1) * (itemsPerView === 2 ? 12 : 20)) / itemsPerView}px)` }}
               >
                 <CategoryCard
                   category={category}

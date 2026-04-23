@@ -6,8 +6,8 @@ import { CheckCircle2, ShoppingBag, Sparkles, Star } from "lucide-react";
 import Link from "next/link";
 
 // ─── Floating star particle ───────────────────────────────────────────────────
-const FloatingStar = ({ delay, x, size, duration, opacity }: {
-  delay: number; x: number; size: number; duration: number; opacity: number;
+const FloatingStar = ({ delay, x, size, duration, opacity, repeatDelay }: {
+  delay: number; x: number; size: number; duration: number; opacity: number; repeatDelay: number;
 }) => (
   <motion.div
     className="absolute pointer-events-none"
@@ -23,7 +23,7 @@ const FloatingStar = ({ delay, x, size, duration, opacity }: {
       duration,
       delay,
       repeat: Infinity,
-      repeatDelay: Math.random() * 3,
+      repeatDelay,
       ease: "easeOut",
     }}
   >
@@ -36,7 +36,7 @@ const FloatingStar = ({ delay, x, size, duration, opacity }: {
 );
 
 // ─── Confetti piece ───────────────────────────────────────────────────────────
-const Confetti = ({ delay, x, color }: { delay: number; x: number; color: string }) => (
+const Confetti = ({ delay, x, color, rotate, moveX, duration }: { delay: number; x: number; color: string; rotate: number; moveX: number; duration: number }) => (
   <motion.div
     className="absolute pointer-events-none rounded-sm"
     style={{ left: `${x}%`, top: "-10px", width: 8, height: 12, background: color }}
@@ -44,10 +44,10 @@ const Confetti = ({ delay, x, color }: { delay: number; x: number; color: string
     animate={{
       y: ["0%", "110vh"],
       opacity: [1, 1, 0],
-      rotate: [0, 360 * (Math.random() > 0.5 ? 1 : -1) * 3],
-      x: [0, (Math.random() - 0.5) * 200],
+      rotate: [0, rotate],
+      x: [0, moveX],
     }}
-    transition={{ duration: 2.5 + Math.random() * 2, delay, ease: "easeIn" }}
+    transition={{ duration, delay, ease: "easeIn" }}
   />
 );
 
@@ -97,6 +97,7 @@ const OrderSuccessPage = () => {
       delay: Math.random() * 4,
       duration: 3 + Math.random() * 3,
       opacity: 0.4 + Math.random() * 0.6,
+      repeatDelay: 1 + Math.random() * 2,
     }))
   );
 
@@ -106,6 +107,9 @@ const OrderSuccessPage = () => {
       x: Math.random() * 100,
       delay: Math.random() * 1.5,
       color: confettiColors[Math.floor(Math.random() * confettiColors.length)],
+      rotate: 360 * (Math.random() > 0.5 ? 1 : -1) * 3,
+      moveX: (Math.random() - 0.5) * 200,
+      duration: 2.5 + Math.random() * 2,
     }))
   );
 
@@ -140,7 +144,7 @@ const OrderSuccessPage = () => {
       {/* ── Floating stars (background) ── */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {stars.current.map((s) => (
-          <FloatingStar key={s.id} x={s.x} size={s.size} delay={s.delay} duration={s.duration} opacity={s.opacity} />
+          <FloatingStar key={s.id} x={s.x} size={s.size} delay={s.delay} duration={s.duration} opacity={s.opacity} repeatDelay={s.repeatDelay} />
         ))}
       </div>
 
@@ -149,7 +153,7 @@ const OrderSuccessPage = () => {
         {showConfetti && (
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             {confetti.current.map((c) => (
-              <Confetti key={c.id} x={c.x} delay={c.delay} color={c.color} />
+              <Confetti key={c.id} x={c.x} delay={c.delay} color={c.color} rotate={c.rotate} moveX={c.moveX} duration={c.duration} />
             ))}
           </div>
         )}
@@ -265,15 +269,17 @@ const OrderSuccessPage = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.9 }}
             >
-              {/* My Orders — disabled for now */}
-              <motion.button
-                disabled
-                className="w-full flex items-center justify-center gap-2 bg-white/10 border border-white/10 text-gray-500 font-semibold py-4 rounded-2xl cursor-not-allowed text-sm"
-              >
-                <ShoppingBag className="w-4 h-4" />
-                My Orders
-                <span className="text-[10px] font-normal text-gray-600 ml-1">(coming soon)</span>
-              </motion.button>
+              {/* My Orders */}
+              <Link href="/user/my-orders" className="w-full">
+                <motion.button
+                  className="w-full flex items-center justify-center gap-2 bg-white/10 border border-white/10 text-gray-200 font-semibold py-4 rounded-2xl cursor-pointer text-sm"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  My Orders
+                </motion.button>
+              </Link>
 
               {/* Continue shopping */}
               <Link href="/" className="w-full">

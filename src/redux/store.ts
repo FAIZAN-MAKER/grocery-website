@@ -7,6 +7,12 @@ export const store = configureStore({
     user: userSlice,
     cart: cartSlice
   },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: {
+        ignoredActions: ["cart/addToCart", "cart/incrementQuantity", "cart/decrementQuantity", "cart/removeFromCart", "cart/setQuantity"],
+      },
+    }),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

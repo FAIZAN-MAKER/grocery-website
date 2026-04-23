@@ -56,11 +56,13 @@ const cartSlice = createSlice({
   initialState,
   reducers: {
     addToCart: (state, action: PayloadAction<IGrocery>) => {
+      const createdAt = action.payload.createdAt;
+      const updatedAt = action.payload.updatedAt;
       const serializableItem = {
         ...action.payload,
         _id: action.payload._id?.toString(),
-        createdAt: action.payload.createdAt?.toString(),
-        updatedAt: action.payload.updatedAt?.toString(),
+        createdAt: createdAt instanceof Date ? createdAt.toISOString() : createdAt ? String(createdAt) : undefined,
+        updatedAt: updatedAt instanceof Date ? updatedAt.toISOString() : updatedAt ? String(updatedAt) : undefined,
       };
       const id = getId(serializableItem);
       const existing = state.items.find((i) => getId(i) === id);

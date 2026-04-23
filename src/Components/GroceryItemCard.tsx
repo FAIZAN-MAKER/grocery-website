@@ -19,7 +19,14 @@ const GroceryItemCard = ({ item, index }: GroceryItemCardProps) => {
   const [imageLoaded, setImageLoaded] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
 
-  const handleAdd = () => dispatch(addToCart(item))
+  const sanitizeForRedux = (item: IGrocery): IGrocery => ({
+    ...item,
+    _id: item._id?.toString(),
+    createdAt: item.createdAt instanceof Date ? item.createdAt.toISOString() : item.createdAt,
+    updatedAt: item.updatedAt instanceof Date ? item.updatedAt.toISOString() : item.updatedAt,
+  });
+
+  const handleAdd = () => dispatch(addToCart(sanitizeForRedux(item)))
   const handleIncrement = () => dispatch(incrementQuantity(itemId))
   const handleDecrement = () => dispatch(decrementQuantity(itemId))
 
