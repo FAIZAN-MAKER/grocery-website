@@ -55,6 +55,7 @@ const ManageOrdersPage = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null)
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
 
   useEffect(() => {
     fetchOrders()
@@ -101,6 +102,24 @@ const ManageOrdersPage = () => {
 
   const toggleOrder = (orderId: string) => {
     setExpandedOrder((prev) => (prev === orderId ? null : orderId))
+  }
+
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      setUpdatingStatus(orderId)
+      const res = await axios.patch(`/api/admin/manage-orders/${orderId}`, { status: newStatus })
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId ? { ...order, status: newStatus as Order["status"] } : order
+        )
+      )
+      setExpandedOrder(null)
+    } catch (err) {
+      console.error("Error updating order status:", err)
+      setError("Failed to update order status. Please try again.")
+    } finally {
+      setUpdatingStatus(null)
+    }
   }
 
   if (isLoading) {
@@ -303,8 +322,9 @@ const ManageOrdersPage = () => {
                           <div className="relative">
                             <select
                               value={order.status}
+                              onChange={(e) => updateOrderStatus(order._id, e.target.value)}
                               className="w-full appearance-none px-4 py-3 text-sm bg-white border-2 border-gray-200 rounded-2xl cursor-pointer outline-none focus:border-green-400 focus:shadow-md focus:shadow-green-100 transition-all"
-                              disabled
+                              disabled={updatingStatus === order._id}
                             >
                               <option value="pending">Pending</option>
                               <option value="out for delivery">Out for Delivery</option>
@@ -312,9 +332,11 @@ const ManageOrdersPage = () => {
                             </select>
                             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                           </div>
-                          <p className="text-xs text-gray-400">
-                            Status update functionality coming soon
-                          </p>
+                          {updatingStatus === order._id && (
+                            <p className="text-xs text-gray-400">
+                              Updating status...
+                            </p>
+                          )}
                         </div>
 
                         {/* Order Items */}

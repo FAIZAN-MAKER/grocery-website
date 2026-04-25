@@ -39,7 +39,7 @@ export default async function Home() {
         ) : plainUser.role === "user" ? (
           <UserDashboard />
         ) : (
-          <DeliveryBoy />
+          <DeliveryBoy user={plainUser} />
         )}
       </main>
 

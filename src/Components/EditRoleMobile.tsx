@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bike, User, UserCog, Phone, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -60,9 +60,30 @@ const EditRoleMobile = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [serverError, setServerError] = useState("")
   const [success, setSuccess] = useState(false)
+  const [adminExists, setAdminExists] = useState(false)
+  const [loadingAdmin, setLoadingAdmin] = useState(true)
+
+  useEffect(() => {
+    const checkAdminExists = async () => {
+      try {
+        const res = await axios.get("/api/admin/exists")
+        setAdminExists(res.data.adminExists)
+      } catch (err) {
+        console.error("Error checking admin:", err)
+      } finally {
+        setLoadingAdmin(false)
+      }
+    }
+    checkAdminExists()
+  }, [])
+
+  const availableRoles = roles.filter((role) => {
+    if (role.id === "admin" && adminExists) return false
+    return true
+  })
 
   const isMobileValid = mobile.replace(/\D/g, "").length === 10
-  const isFormValid = selectedRole !== "" && isMobileValid
+  const isFormValid = selectedRole !== "" && isMobileValid && !loadingAdmin
 
   const handleMobileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Only allow digits, max 10
@@ -141,7 +162,7 @@ const EditRoleMobile = () => {
             Select your role
           </p>
           <div className="flex flex-col gap-3">
-            {roles.map((role) => {
+            {availableRoles.map((role) => {
               const isSelected = selectedRole === role.id
               return (
                 <motion.button
