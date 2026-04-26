@@ -9,6 +9,7 @@ import { useDispatch } from "react-redux"
 
 const useGetMe = () => {
   const dispatch = useDispatch<AppDispatch>()
+  const isDev = process.env.NODE_ENV === "development";
   useEffect(() => {
     const getme = async () => {
       try {
@@ -16,7 +17,7 @@ const useGetMe = () => {
         dispatch(setUserData(res.data))
       }
       catch (error) {
-        console.log(error)
+        if (isDev) console.log(error)
       }
     }
     getme();

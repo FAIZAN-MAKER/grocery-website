@@ -73,7 +73,7 @@ const ManageOrdersPage = () => {
       setIsLoading(true)
       setError("")
       const res = await axios.get("/api/admin/get-orders")
-      setOrders(res.data)
+      setOrders(res.data.data || [])
     } catch (err) {
       console.error("Error fetching orders:", err)
       setError("Failed to fetch orders. Please try again.")

@@ -1,6 +1,7 @@
 "use client";
 
 import { signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import {
   Search, ShoppingCart, X, LogOut, ChevronDown,
   ShoppingBasket, Package, Plus, List, ClipboardList, Menu,
@@ -46,9 +47,12 @@ const useDebounce = <T,>(value: T, delay: number): T => {
   return debouncedValue;
 };
 
-const Avatar = ({ user, size = "md" }: { user: IUser; size?: "sm" | "md" | "lg" }) => {
+const Avatar = ({ user, size = "md" }: { user: IUser | null; size?: "sm" | "md" | "lg" }) => {
+  if (!user) {
+    return <div className="w-9 h-9 bg-gray-200 rounded-xl" />;
+  }
   const initials = useMemo(() =>
-    user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2),
+    user.name?.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) || "?",
     [user.name]
   );
   const dims = { sm: 28, md: 36, lg: 64 };
@@ -58,7 +62,7 @@ const Avatar = ({ user, size = "md" }: { user: IUser; size?: "sm" | "md" | "lg" 
     lg: "w-16 h-16 text-lg rounded-2xl",
   };
   if (user.image) {
-    return <Image src={user.image} alt={user.name} width={dims[size]} height={dims[size]} className={`${cls[size]} object-cover`} />;
+    return <Image src={user.image} alt={user.name || "User"} width={dims[size]} height={dims[size]} className={`${cls[size]} object-cover`} />;
   }
   return (
     <div className={`${cls[size]} bg-green-500 flex items-center justify-center text-white font-bold shrink-0`}>
@@ -99,8 +103,8 @@ const adminLinks = [
   { href: "/admin/manage-orders", icon: ClipboardList, label: "Manage Orders", desc: "Track & update orders" },
 ];
 
-const AdminSidebar = ({ user, open, onClose }: { user: IUser; open: boolean; onClose: () => void }) => {
-  const initials = useMemo(() => user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2), [user.name]);
+const AdminSidebar = ({ user, open, onClose }: { user: IUser | null; open: boolean; onClose: () => void }) => {
+  const initials = useMemo(() => user?.name?.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) || "?", [user?.name]);
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -209,6 +213,7 @@ const CartBadge = () => {
 };
 
 const Nav = ({ user }: { user: IUser }) => {
+  const router = useRouter();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -216,10 +221,25 @@ const Nav = ({ user }: { user: IUser }) => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const shouldReduceMotion = useReducedMotion();
-  const isAdmin = user.role === "admin";
-  const debouncedSearch = useDebounce(searchQuery, 300);
+  const isAdmin = user?.role === "admin";
+  const isUser = user?.role === "user";
+  const isDeliveryBoy = user?.role === "deliveryBoy";
 
-  useEffect(() => { /* wire up search API with debouncedSearch */ }, [debouncedSearch]);
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
+  const handleMobileSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchOpen(false);
+    }
+  };
+
   useClickOutside(dropdownRef, () => setDropdownOpen(false));
 
   useEffect(() => {
@@ -236,7 +256,7 @@ const Nav = ({ user }: { user: IUser }) => {
   }, []);
 
   const handleSignOut = useCallback(() => { setDropdownOpen(false); signOut({ callbackUrl: "/login" }); }, []);
-  const firstName = useMemo(() => user.name.split(" ")[0], [user.name]);
+  const firstName = useMemo(() => user?.name?.split(" ")[0] || "User", [user?.name]);
   const springTransition = useMemo(() => ({ type: "spring" as const, stiffness: shouldReduceMotion ? 300 : 120, damping: shouldReduceMotion ? 30 : 18 }), [shouldReduceMotion]);
 
   return (
@@ -260,22 +280,24 @@ const Nav = ({ user }: { user: IUser }) => {
               </div>
             )}
 
-            {!isAdmin && (
-              <motion.form className="hidden md:flex flex-1 max-w-lg items-center gap-3 bg-white/10 border border-white/20 rounded-2xl px-4 py-2.5 focus-within:bg-white/20 focus-within:border-white/40 transition-all duration-200" onSubmit={(e) => e.preventDefault()} role="search">
-                <Search className="w-4 h-4 text-white/70 shrink-0" />
-                <input type="text" placeholder="Search groceries... (⌘K)" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="flex-1 bg-transparent outline-none text-white placeholder:text-white/50 text-sm min-w-0" />
-                <AnimatePresence>
-                  {searchQuery && (
-                    <motion.button type="button" onClick={() => setSearchQuery("")} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="text-white/60 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors">
-                      <X className="w-4 h-4" />
-                    </motion.button>
-                  )}
-                </AnimatePresence>
-              </motion.form>
+            {isUser && (
+              <>
+                <motion.form className="hidden md:flex flex-1 max-w-lg items-center gap-3 bg-white/10 border border-white/20 rounded-2xl px-4 py-2.5 focus-within:bg-white/20 focus-within:border-white/40 transition-all duration-200" onSubmit={handleSearchSubmit} role="search">
+                  <Search className="w-4 h-4 text-white/70 shrink-0" />
+                  <input type="text" placeholder="Search groceries... (⌘K)" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="flex-1 bg-transparent outline-none text-white placeholder:text-white/50 text-sm min-w-0" />
+                  <AnimatePresence>
+                    {searchQuery && (
+                      <motion.button type="button" onClick={() => setSearchQuery("")} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="text-white/60 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors">
+                        <X className="w-4 h-4" />
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
+                </motion.form>
+              </>
             )}
 
             <div className="flex items-center gap-2 sm:gap-3">
-              {!isAdmin && (
+              {isUser && (
                 <motion.button className="md:hidden w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-xl text-white transition-colors" onClick={() => setSearchOpen((p) => !p)} whileTap={{ scale: 0.9 }}>
                   <AnimatePresence mode="wait" initial={false}>
                     {searchOpen
@@ -286,7 +308,7 @@ const Nav = ({ user }: { user: IUser }) => {
                 </motion.button>
               )}
 
-              {!isAdmin && <CartBadge />}
+              {isUser && <CartBadge />}
 
               {isAdmin && (
                 <motion.button className="lg:hidden w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-xl text-white transition-colors" onClick={() => setSidebarOpen(true)} whileTap={{ scale: 0.9 }}>
@@ -318,11 +340,11 @@ const Nav = ({ user }: { user: IUser }) => {
                           </div>
                         </div>
                         <span className="inline-flex mt-3 text-[10px] font-semibold uppercase tracking-wider bg-green-100 text-green-700 px-2.5 py-1 rounded-full">
-                          {user.role === "deliveryBoy" ? "Delivery Partner" : user.role}
+                          {user?.role === "deliveryBoy" ? "Delivery Partner" : user?.role}
                         </span>
                       </div>
                       <div className="p-2 space-y-0.5">
-                        {!isAdmin && (
+                        {isUser && (
                           <MenuItem href="/user/my-orders" onClick={() => setDropdownOpen(false)} className="text-gray-700 hover:bg-gray-50 hover:text-gray-900" icon={<Package className="w-4 h-4" />}>
                             My Orders
                           </MenuItem>
@@ -339,11 +361,11 @@ const Nav = ({ user }: { user: IUser }) => {
             </div>
           </div>
 
-          {!isAdmin && (
+          {isUser && (
             <AnimatePresence>
               {searchOpen && (
                 <motion.div className="md:hidden px-4 pb-4" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ type: "spring", stiffness: 300, damping: 25 }}>
-                  <form className="flex items-center gap-3 bg-white/10 border border-white/20 rounded-2xl px-4 py-3" onSubmit={(e) => e.preventDefault()}>
+                  <form className="flex items-center gap-3 bg-white/10 border border-white/20 rounded-2xl px-4 py-3" onSubmit={handleMobileSearchSubmit}>
                     <Search className="w-5 h-5 text-white/70 shrink-0" />
                     <input ref={searchRef} type="text" placeholder="Search groceries..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="flex-1 bg-transparent outline-none text-white placeholder:text-white/50 text-base min-w-0" />
                     <AnimatePresence>

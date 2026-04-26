@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, MapPin, User, Phone,
   CreditCard, Banknote, ShoppingBag, Truck, ChevronRight,
-  Loader2, CheckCircle2,
+  CheckCircle2,
 } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
@@ -341,10 +341,7 @@ const CheckoutPage = () => {
                       : "bg-green-500 hover:bg-green-400 text-gray-950 shadow-xl shadow-green-500/20"
                   }`}
                 >
-                  {isLoading
-                    ? <><Loader2 className="w-4 h-4 animate-spin" />{paymentMethod === "stripe" ? "Redirecting to Stripe…" : "Placing Order…"}</>
-                    : <>{paymentMethod === "cod" ? "Place Order" : "Pay & Place Order"}<ChevronRight className="w-5 h-5" /></>
-                  }
+                  {paymentMethod === "cod" ? "Place Order" : "Pay & Place Order"}<ChevronRight className="w-5 h-5" />
                 </motion.button>
 
                 {!address.fullAddress && !orderError && (

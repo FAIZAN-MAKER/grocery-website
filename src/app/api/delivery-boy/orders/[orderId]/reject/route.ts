@@ -9,38 +9,37 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ord
     await connectDb();
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ success: false, message: "Unauthorized", data: null }, { status: 401 });
     }
 
     const { orderId } = await params;
     const deliveryBoy = await User.findOne({ 
       email: session.user.email, 
-      role: { $in: ["delivery boy", "deliveryBoy"] }
+      role: "deliveryBoy"
     });
     
     if (!deliveryBoy) {
-      return NextResponse.json({ message: "Only delivery boys can reject orders" }, { status: 403 });
+      return NextResponse.json({ success: false, message: "Only delivery boys can reject orders", data: null }, { status: 403 });
     }
 
     const order = await Order.findById(orderId);
     if (!order) {
-      return NextResponse.json({ message: "Order not found" }, { status: 404 });
+      return NextResponse.json({ success: false, message: "Order not found", data: null }, { status: 404 });
     }
 
-    // Rejecting means the order goes back to pending for another delivery boy
+    // Rejecting keeps the order available for reassignment in delivery queue
     order.assignedDeliveryBoy = null;
-    order.status = "pending";
+    order.status = "out for delivery";
     await order.save();
 
     return NextResponse.json({ 
-      message: "Order rejected successfully", 
-      order: {
+      success: true, message: "Order rejected successfully", data: { 
         _id: order._id,
         status: order.status,
       }
     }, { status: 200 });
   } catch (error) {
     console.error("Error rejecting order:", error);
-    return NextResponse.json({ message: "Failed to reject order" }, { status: 500 });
+    return NextResponse.json({ success: false, message: "Failed to reject order", data: null }, { status: 500 });
   }
 }

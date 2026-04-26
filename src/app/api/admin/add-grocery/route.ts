@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     const session = await auth();
     if (session?.user?.role !== "admin") {
       return NextResponse.json(
-        { error: "Unauthorized access" },
+        { success: false, message: "Unauthorized access", data: null },
         { status: 403 },
       );
     }
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     // ✅ FIX: Check for existence since they are strings (no more isNaN)
     if (!name || !category || !price || !unit || !file) {
       return NextResponse.json(
-        { error: "Missing or invalid fields" },
+        { success: false, message: "Missing or invalid fields", data: null },
         { status: 400 },
       );
     }
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
 
     if (!imageUrl) {
       return NextResponse.json(
-        { error: "Failed to upload image" },
+        { success: false, message: "Failed to upload image", data: null },
         { status: 500 },
       );
     }
@@ -54,22 +54,18 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(
-      {
-        success: true,
-        message: "Product added successfully",
-        grocery,
-      },
+      { success: true, message: "Product added successfully", data: { grocery } },
       { status: 201 },
     );
   } catch (error: any) {
     console.error("ADD_PRODUCT_ERROR:", error.message);
 
     if (error.name === "ValidationError") {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return NextResponse.json({ success: false, message: error.message, data: null }, { status: 400 });
     }
 
     return NextResponse.json(
-      { error: "Internal Server Error" },
+      { success: false, message: "Internal Server Error", data: null },
       { status: 500 },
     );
   }

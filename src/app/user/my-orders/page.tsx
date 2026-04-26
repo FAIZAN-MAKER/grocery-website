@@ -130,6 +130,14 @@ const StatusBadge = ({ status }: { status: Order["status"] }) => {
 // ─── Order Card ───────────────────────────────────────────────────────────────
 const OrderCard = ({ order, index }: { order: Order; index: number }) => {
   const [expanded, setExpanded] = useState(false);
+  const router = useRouter();
+
+  const canTrack = order.status === "accepted" || order.status === "out for delivery";
+  const hasAddressCoords = order.address.latitude && order.address.longitude;
+
+  const handleTrackOrder = () => {
+    router.push(`/user/track-order?orderId=${order._id}`);
+  };
 
   return (
     <motion.div
@@ -175,6 +183,17 @@ const OrderCard = ({ order, index }: { order: Order; index: number }) => {
             }
           </span>
         </div>
+
+        {/* Track Order button */}
+        {canTrack && hasAddressCoords && (
+          <button
+            onClick={handleTrackOrder}
+            className="w-full flex items-center justify-center gap-2 mb-4 px-4 py-2.5 bg-emerald-500 text-white text-sm font-semibold rounded-xl shadow-md shadow-emerald-100 hover:bg-emerald-600 active:scale-95 transition-all"
+          >
+            <Navigation className="w-4 h-4" />
+            Track Order
+          </button>
+        )}
 
         {/* Product thumbnails */}
         <div className="flex items-center gap-2 mb-4">
@@ -352,9 +371,10 @@ export default function MyOrdersPage() {
     fetchOrders();
 
     const socket = getSocket();
+    const isDev = process.env.NODE_ENV === "development";
     
     socket.on("order-status-changed", (data: { orderId: string; status: string }) => {
-      console.log("Real-time order update:", data);
+      if (isDev) console.log("Real-time order update:", data);
       fetchOrders();
     });
 

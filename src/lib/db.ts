@@ -1,10 +1,7 @@
-import dns from "node:dns";
-// 🚨 CRITICAL: Force DNS resolution to bypass Windows/ISP SRV issues
-dns.setServers(["1.1.1.1", "8.8.8.8"]);
-
 import mongoose from "mongoose";
 
 const MONGODB_URI = process.env.MONGODB_URI!;
+const isDev = process.env.NODE_ENV === "development";
 
 if (!MONGODB_URI) {
   throw new Error("❌ MONGODB_URI is missing in your .env file.");
@@ -14,26 +11,26 @@ if (!MONGODB_URI) {
 let cached = (global as any).mongoose;
 
 if (!cached) {
-  console.log("🌑 Initializing global MongoDB cache...");
+  if (isDev) console.log("🌑 Initializing global MongoDB cache...");
   cached = (global as any).mongoose = { conn: null, promise: null };
 }
 
 async function connectDb() {
   // Case 1: Return existing connection
   if (cached.conn && mongoose.connection.readyState === 1) {
-    console.log("♻️  Using existing MongoDB connection.");
+    if (isDev) console.log("♻️  Using existing MongoDB connection.");
     return cached.conn;
   }
 
   // Case 2: Wait if a connection is already in progress
   if (cached.promise) {
-    console.log("⏳ Connection in progress, waiting...");
+    if (isDev) console.log("⏳ Connection in progress, waiting...");
     cached.conn = await cached.promise;
     return cached.conn;
   }
 
   // Case 3: Start a new connection
-  console.log("🔌 Connecting to MongoDB with DNS fix...");
+  if (isDev) console.log("🔌 Connecting to MongoDB with DNS fix...");
 
   const opts = {
     bufferCommands: false,
@@ -44,7 +41,7 @@ async function connectDb() {
   cached.promise = mongoose
     .connect(MONGODB_URI, opts)
     .then((mongooseInstance) => {
-      console.log("✅ MongoDB Connected Successfully (DNS Fixed).");
+      if (isDev) console.log("✅ MongoDB Connected Successfully (DNS Fixed).");
       return mongooseInstance.connection;
     })
     .catch((error) => {

@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
 
     if (!name || !email || !password) {
       return NextResponse.json(
-        { message: "Missing required fields" },
+        { success: false, message: "Missing required fields", data: null },
         { status: 400 },
       );
     }
@@ -20,14 +20,14 @@ export async function POST(req: NextRequest) {
     const existUser = await User.findOne({ email });
     if (existUser) {
       return NextResponse.json(
-        { message: "User already exists." },
+        { success: false, message: "User already exists.", data: null },
         { status: 400 },
       );
     }
 
     if (password.length < 6) {
       return NextResponse.json(
-        { message: "Password must be at least 6 characters long" },
+        { success: false, message: "Password must be at least 6 characters long", data: null },
         { status: 400 },
       );
     }
@@ -42,19 +42,21 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(
-      {
-        message: "User registered successfully",
-        user: {
-          id: newUser._id,
-          name: newUser.name,
-          email: newUser.email,
-        },
+      { 
+        success: true, message: "User registered successfully", data: {
+          user: {
+            id: newUser._id,
+            name: newUser.name,
+            email: newUser.email,
+          },
+        }
       },
       { status: 201 },
     );
   } catch (error) {
+    console.error("Error registering user:", error);
     return NextResponse.json(
-      { message: "Internal server error" },
+      { success: false, message: "Internal server error", data: null },
       { status: 500 },
     );
   }

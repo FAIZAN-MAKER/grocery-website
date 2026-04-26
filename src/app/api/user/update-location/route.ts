@@ -3,17 +3,17 @@ import { auth } from "@/auth";
 import { User } from "@/models/user.model";
 import connectDb from "@/lib/db";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ success: false, message: "Unauthorized", data: null }, { status: 401 });
     }
 
     const { latitude, longitude } = await req.json();
 
     if (typeof latitude !== "number" || typeof longitude !== "number") {
-      return NextResponse.json({ error: "Invalid coordinates" }, { status: 400 });
+      return NextResponse.json({ success: false, message: "Invalid coordinates", data: null }, { status: 400 });
     }
 
     await connectDb();
@@ -25,9 +25,9 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, message: "Location updated successfully", data: null }, { status: 200 });
   } catch (error) {
     console.error("Error updating location:", error);
-    return NextResponse.json({ error: "Failed to update location" }, { status: 500 });
+    return NextResponse.json({ success: false, message: "Failed to update location", data: null }, { status: 500 });
   }
 }

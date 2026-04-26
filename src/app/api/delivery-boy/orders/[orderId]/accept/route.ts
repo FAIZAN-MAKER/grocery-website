@@ -12,26 +12,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ord
     await connectDb();
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ success: false, message: "Unauthorized", data: null }, { status: 401 });
     }
 
     const { orderId } = await params;
     const deliveryBoy = await User.findOne({ 
       email: session.user.email, 
-      role: { $in: ["delivery boy", "deliveryBoy"] }
+      role: "deliveryBoy"
     });
     
     if (!deliveryBoy) {
-      return NextResponse.json({ message: "Only delivery boys can accept orders" }, { status: 403 });
+      return NextResponse.json({ success: false, message: "Only delivery boys can accept orders", data: null }, { status: 403 });
     }
 
     const order = await Order.findById(orderId);
     if (!order) {
-      return NextResponse.json({ message: "Order not found" }, { status: 404 });
+      return NextResponse.json({ success: false, message: "Order not found", data: null }, { status: 404 });
     }
 
     if (order.status !== "out for delivery") {
-      return NextResponse.json({ message: "Order is not available for delivery" }, { status: 400 });
+      return NextResponse.json({ success: false, message: "Order is not available for delivery", data: null }, { status: 400 });
     }
 
     order.assignedDeliveryBoy = deliveryBoy._id;
@@ -63,8 +63,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ord
     }
 
     return NextResponse.json({ 
-      message: "Order accepted successfully", 
-      order: {
+      success: true, message: "Order accepted successfully", data: { 
         _id: order._id,
         status: order.status,
         assignedDeliveryBoy: deliveryBoy._id,
@@ -76,6 +75,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ord
     }, { status: 200 });
   } catch (error) {
     console.error("Error accepting order:", error);
-    return NextResponse.json({ message: "Failed to accept order" }, { status: 500 });
+    return NextResponse.json({ success: false, message: "Failed to accept order", data: null }, { status: 500 });
   }
 }

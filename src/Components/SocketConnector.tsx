@@ -14,12 +14,13 @@ interface SocketConnectorProps {
 
 export default function SocketConnector({ user }: SocketConnectorProps) {
   const [isConnected, setIsConnected] = useState(false);
+  const isDev = process.env.NODE_ENV === "development";
 
   useEffect(() => {
     const socket = getSocket();
 
     const handleConnect = async () => {
-      console.log("Socket connected:", socket.id);
+      if (isDev) console.log("Socket connected:", socket.id);
       setIsConnected(true);
 
       try {
@@ -33,14 +34,14 @@ export default function SocketConnector({ user }: SocketConnectorProps) {
         });
 
         const data = await response.json();
-        console.log("Socket connection updated:", data);
+        if (isDev) console.log("Socket connection updated:", data);
       } catch (error) {
         console.error("Error updating socket connection:", error);
       }
     };
 
     const handleDisconnect = () => {
-      console.log("Socket disconnected:", socket.id);
+      if (isDev) console.log("Socket disconnected:", socket.id);
       setIsConnected(false);
     };
 

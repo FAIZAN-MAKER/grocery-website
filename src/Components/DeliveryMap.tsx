@@ -138,7 +138,7 @@ function RoutePolyline({ positions }: { positions: L.LatLngExpression[] }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function DeliveryMap({ orderId, destination, onDelivered }: DeliveryMapProps) {
+export default function DeliveryMap({ orderId, destination, isPaid, onDelivered }: DeliveryMapProps) {
   const [driverLocation, setDriverLocation] = useState<L.LatLngTuple | null>(null);
   const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
   const [isNearDestination, setIsNearDestination] = useState(false);

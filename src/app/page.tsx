@@ -38,7 +38,7 @@ export default async function Home() {
           <AdminDashBoard />
         ) : plainUser.role === "user" ? (
           <UserDashboard />
-        ) : plainUser.role === "delivery boy" || plainUser.role === "deliveryBoy" ? (
+        ) : plainUser.role === "deliveryBoy" ? (
           <DeliveryBoy user={plainUser} />
         ) : (
           <UserDashboard />

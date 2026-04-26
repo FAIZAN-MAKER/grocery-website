@@ -2,11 +2,12 @@
 
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Eye, EyeOff, User, Mail, Lock, Loader2 } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, User, Mail, Lock } from 'lucide-react'
 import Link from 'next/link'
 import axios, { AxiosError } from 'axios'
 import { z } from 'zod'
 import { signIn } from 'next-auth/react'
+import Button from './ui/Button'
 
 // ─── Zod Schema ───────────────────────────────────────────────────────────────
 const registerSchema = z.object({
@@ -238,21 +239,9 @@ const RegisterForm = ({ prevStep }: { prevStep: (step: number) => void }) => {
           </AnimatePresence>
 
           {/* Submit */}
-          <motion.button
-            type="submit"
-            disabled={isLoading}
-            className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white font-semibold py-4 rounded-2xl shadow-md shadow-green-200 transition-colors mt-1"
-            whileTap={{ scale: 0.97 }}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Creating account…
-              </>
-            ) : (
-              "Create Account"
-            )}
-          </motion.button>
+          <Button type="submit" isLoading={isLoading} size="lg" className="mt-1">
+            Create Account
+          </Button>
 
           {/* Divider */}
           <div className="flex items-center gap-3 my-1">
@@ -262,16 +251,10 @@ const RegisterForm = ({ prevStep }: { prevStep: (step: number) => void }) => {
           </div>
 
           {/* Google placeholder */}
-          <motion.button
-            type="button"
-            onClick={() => signIn("google", { callbackUrl: "/" })}
-            className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 text-gray-700 font-medium py-3.5 rounded-2xl transition-all duration-200 shadow-sm hover:shadow cursor-pointer"
-            whileTap={{ scale: 0.97 }}
-            whileHover={{ scale: 1.01 }}
-          >
-          <img src="/google.png" alt="Google" className="w-5 h-5" />
-              Continue with Google
-          </motion.button>
+          <Button type="button" variant="secondary" onClick={() => signIn("google", { callbackUrl: "/" })}>
+            <img src="/google.png" alt="Google" className="w-5 h-5" />
+            Continue with Google
+          </Button>
         </motion.form>
 
         {/* Sign in link */}

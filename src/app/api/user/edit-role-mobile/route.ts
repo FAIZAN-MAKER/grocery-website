@@ -9,17 +9,18 @@ export async function POST(req: NextRequest) {
     const { role, mobile } = await req.json();
     const session = await auth();
     if (!session?.user?.email) {
-      return new NextResponse("Unauthorized", { status: 401 });
+      return NextResponse.json({ success: false, message: "Unauthorized", data: null }, { status: 401 });
     }
     const user = await User.findOneAndUpdate(
       { email: session.user.email },
       { role, mobile },
     );
     if (!user) {
-      return new NextResponse("User not found", { status: 404 });
+      return NextResponse.json({ success: false, message: "User not found", data: null }, { status: 404 });
     }
-    return NextResponse.json({ user }, { status: 200 });
+    return NextResponse.json({ success: true, message: "User updated successfully", data: { user } }, { status: 200 });
   } catch (error) {
-    return new NextResponse("Internal Server Error", { status: 500 });
+    console.error("Error updating user:", error);
+    return NextResponse.json({ success: false, message: "Internal Server Error", data: null }, { status: 500 });
   }
 }

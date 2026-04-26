@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
     const session = await auth();
 
     if (!session?.user) {
-      return NextResponse.json("Unauthorized", { status: 401 });
+      return NextResponse.json({ success: false, message: "Unauthorized", data: null }, { status: 401 });
     }
 
     const user = await User.findOne({ email: session.user.email }).select(
@@ -15,11 +15,12 @@ export async function GET(req: NextRequest) {
     );
 
     if (!user) {
-      return NextResponse.json("User not found", { status: 404 });
+      return NextResponse.json({ success: false, message: "User not found", data: null }, { status: 404 });
     }
 
-    return NextResponse.json(user, { status: 200 });
+    return NextResponse.json({ success: true, message: "User fetched successfully", data: { user } }, { status: 200 });
   } catch (error) {
-    return NextResponse.json("Internal Server Error", { status: 500 });
+    console.error("Error fetching user:", error);
+    return NextResponse.json({ success: false, message: "Internal Server Error", data: null }, { status: 500 });
   }
 }

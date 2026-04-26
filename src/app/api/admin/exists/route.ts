@@ -7,13 +7,13 @@ export async function GET(req: NextRequest) {
         await connectDb();
         const adminExists = await User.findOne({ role: "admin" });
         return NextResponse.json(
-            { adminExists: !!adminExists },
+            { success: true, message: "Admin check completed", data: { adminExists: !!adminExists } },
             { status: 200 }
         );
     } catch (error) {
         console.error("Error checking admin:", error);
         return NextResponse.json(
-            { message: "Failed to check admin" },
+            { success: false, message: "Failed to check admin", data: null },
             { status: 500 }
         );
     }
