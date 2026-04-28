@@ -94,3 +94,5 @@ const user = await User.findOne({ email }).select("+password").lean<{ _id: any; 
 };
 
 export const { handlers, signIn, signOut, auth } = NextAuth(authConfig);
+
+
